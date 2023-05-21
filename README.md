@@ -71,7 +71,30 @@ where date(p.payment_date) = '2005-07-30'
                         -> Filter: (cast(p.payment_date as date) = '2005-07-30')  (cost=0.25 rows=1) (actual time=0.003..0.003 rows=0 loops=16044)
                             -> Index lookup on p using fk_payment_rental (rental_id=r.rental_id)  (cost=0.25 rows=1) (actual time=0.002..0.003 rows=1 loops=16044)
 ```
-
+## Доработка
+```sql
+select distinct concat(c.last_name, ' ', c.first_name) as Customer, sum(p.amount)  as PaymentSum
+from customer c 
+join rental r on r.customer_id = c.customer_id
+join payment p on p.rental_id = r.rental_id
+join inventory i on i.inventory_id  = r.inventory_id 
+where date(p.payment_date) = '2005-07-30' and date(r.rental_date) = '2005-07-30'
+group by 1
+```
+#### explain analyze:
+```
+-> Table scan on <temporary>  (actual time=12.323..12.362 rows=391 loops=1)
+    -> Aggregate using temporary table  (actual time=12.321..12.321 rows=391 loops=1)
+        -> Nested loop inner join  (cost=17734.25 rows=15400) (actual time=0.434..11.171 rows=634 loops=1)
+            -> Nested loop inner join  (cost=12344.25 rows=15400) (actual time=0.429..10.389 rows=634 loops=1)
+                -> Nested loop inner join  (cost=6954.25 rows=15400) (actual time=0.408..9.638 rows=634 loops=1)
+                    -> Filter: ((cast(p.payment_date as date) = '2005-07-30') and (p.rental_id is not null))  (cost=1564.25 rows=15400) (actual time=0.389..8.381 rows=634 loops=1)
+                        -> Table scan on p  (cost=1564.25 rows=15400) (actual time=0.045..6.247 rows=16044 loops=1)
+                    -> Filter: (cast(r.rental_date as date) = '2005-07-30')  (cost=0.25 rows=1) (actual time=0.002..0.002 rows=1 loops=634)
+                        -> Single-row index lookup on r using PRIMARY (rental_id=p.rental_id)  (cost=0.25 rows=1) (actual time=0.002..0.002 rows=1 loops=634)
+                -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=0.25 rows=1) (actual time=0.001..0.001 rows=1 loops=634)
+            -> Single-row covering index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=0.25 rows=1) (actual time=0.001..0.001 rows=1 loops=634)
+```
 
 ### Задание 3*
 
