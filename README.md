@@ -96,6 +96,31 @@ group by 1
             -> Single-row covering index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=0.25 rows=1) (actual time=0.001..0.001 rows=1 loops=634)
 ```
 
+## Доработка 2
+```sql
+select distinct concat(c.last_name, ' ', c.first_name) as Customer, sum(p.amount)  as PaymentSum
+from customer c 
+join rental r on r.customer_id = c.customer_id
+join payment p on p.rental_id = r.rental_id
+join inventory i on i.inventory_id  = r.inventory_id 
+where payment_date >= '2005-07-30' and payment_date < DATE_ADD('2005-07-30', INTERVAL 1 DAY)
+group by 1
+```
+#### explain analyze:
+```
+> Limit: 200 row(s)  (actual time=15.003..15.043 rows=200 loops=1)
+    -> Table scan on <temporary>  (actual time=15.001..15.029 rows=200 loops=1)
+        -> Aggregate using temporary table  (actual time=14.999..14.999 rows=391 loops=1)
+            -> Nested loop inner join  (cost=3360.56 rows=1711) (actual time=0.102..13.898 rows=634 loops=1)
+                -> Nested loop inner join  (cost=2761.79 rows=1711) (actual time=0.098..12.829 rows=634 loops=1)
+                    -> Nested loop inner join  (cost=2163.02 rows=1711) (actual time=0.092..11.907 rows=634 loops=1)
+                        -> Filter: ((p.payment_date >= TIMESTAMP'2005-07-30 00:00:00') and (p.payment_date < <cache>(('2005-07-30' + interval 1 day))) and (p.rental_id is not null))  (cost=1564.25 rows=1711) (actual time=0.079..10.489 rows=634 loops=1)
+                            -> Table scan on p  (cost=1564.25 rows=15400) (actual time=0.063..8.413 rows=16044 loops=1)
+                        -> Single-row index lookup on r using PRIMARY (rental_id=p.rental_id)  (cost=0.25 rows=1) (actual time=0.002..0.002 rows=1 loops=634)
+                    -> Single-row index lookup on c using PRIMARY (customer_id=r.customer_id)  (cost=0.25 rows=1) (actual time=0.001..0.001 rows=1 loops=634)
+                -> Single-row covering index lookup on i using PRIMARY (inventory_id=r.inventory_id)  (cost=0.25 rows=1) (actual time=0.001..0.001 rows=1 loops=634)
+```
+
 ### Задание 3*
 
 Самостоятельно изучите, какие типы индексов используются в PostgreSQL. Перечислите те индексы, которые используются в PostgreSQL, а в MySQL — нет.
